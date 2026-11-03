@@ -1,0 +1,22 @@
+{
+  "findings": [
+    {"file": "hooks/signing.py", "line": 30, "category": "security",
+     "summary": "Signature is compared with ==, which leaks timing; use hmac.compare_digest on bytes."},
+    {"file": "hooks/signing.py", "line": 29, "category": "security",
+     "summary": "verify() never uses now/tolerance, so captured requests can be replayed indefinitely."},
+    {"file": "hooks/signing.py", "line": 15, "category": "security",
+     "summary": "The timestamp is not part of the HMAC input, so it can be altered without invalidating the signature."},
+    {"file": "hooks/delivery.py", "line": 95, "category": "reliability",
+     "summary": "All non-2xx responses are retried, including permanent 4xx and 3xx."},
+    {"file": "hooks/delivery.py", "line": 91, "category": "correctness",
+     "summary": "range(max_attempts + 1) performs max_attempts + 1 requests."},
+    {"file": "hooks/delivery.py", "line": 100, "category": "correctness",
+     "summary": "Backoff exponent is attempt + 1, so the first wait is twice base_delay."},
+    {"file": "hooks/delivery.py", "line": 101, "category": "error-handling",
+     "summary": "Returns None after exhausting retries instead of raising DeliveryFailed; failures are silent."},
+    {"file": "hooks/delivery.py", "line": 97, "category": "error-handling",
+     "summary": "except Exception: pass swallows programming errors and the last failure cause."},
+    {"file": "hooks/delivery.py", "line": 75, "category": "state",
+     "summary": "Mutable default headers dict is shared across calls: same X-Webhook-Id every time and caller headers are mutated."}
+  ]
+}

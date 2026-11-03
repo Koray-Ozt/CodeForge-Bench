@@ -1,0 +1,36 @@
+diff --git a/inventory/service.py b/inventory/service.py
+index 3233026..3e07280 100644
+--- a/inventory/service.py
++++ b/inventory/service.py
+@@ -7,6 +7,7 @@ The service is shared by all request-handling threads in the process.
+ 
+ from __future__ import annotations
+ 
++import threading
+ import time
+ import uuid
+ from collections.abc import Callable
+@@ -47,6 +48,7 @@ class ReservationService:
+         self._ttl = ttl_seconds
+         self._clock = clock
+         self._reservations: dict[str, Reservation] = {}
++        self._lock = threading.Lock()
+ 
+     def available(self, sku: str) -> int:
+         return self._store.get(sku)
+@@ -54,10 +56,11 @@ class ReservationService:
+     def reserve(self, sku: str, quantity: int, holder: str) -> Reservation:
+         if quantity <= 0:
+             raise ValueError("quantity must be positive")
+-        available = self._store.get(sku)
+-        if available < quantity:
+-            raise InsufficientStock(sku, quantity, available)
+-        self._store.set(sku, available - quantity)
++        with self._lock:
++            available = self._store.get(sku)
++            if available < quantity:
++                raise InsufficientStock(sku, quantity, available)
++            self._store.set(sku, available - quantity)
+         reservation = Reservation(
+             id=uuid.uuid4().hex,
+             sku=sku,

@@ -1,0 +1,19 @@
+id = "t01_inventory_race"
+title = "Overselling in the stock reservation service"
+category = "race-condition"
+
+[limits]
+timeout_s = 120
+memory = "256m"
+cpus = "1"
+pids = 128
+
+[[candidates]]
+patch = "candidates/global_lock.patch"
+expect = "failed_tests"
+note = "One service-wide lock around every operation: correct but serializes all SKUs."
+
+[[candidates]]
+patch = "candidates/lock_reserve_only.patch"
+expect = "failed_tests"
+note = "Locks only the reserve path; release/confirm/sweep still race."

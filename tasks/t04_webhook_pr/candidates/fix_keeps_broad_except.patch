@@ -1,0 +1,103 @@
+diff --git a/hooks/delivery.py b/hooks/delivery.py
+index a36fd68..6741885 100644
+--- a/hooks/delivery.py
++++ b/hooks/delivery.py
+@@ -26,6 +26,8 @@ from typing import Any
+ 
+ from .signing import sign
+ 
++TRANSIENT_STATUSES = frozenset({408, 425, 429})
++
+ 
+ class TransportError(Exception):
+     """Raised by a transport for connection-level failures."""
+@@ -66,13 +68,17 @@ def urllib_transport(url: str, body: bytes, headers: dict[str, str], timeout: fl
+         raise TransportError(str(exc.reason)) from exc
+ 
+ 
++def _is_transient(status: int) -> bool:
++    return status in TRANSIENT_STATUSES or 500 <= status < 600
++
++
+ def deliver(
+     url: str,
+     payload: dict[str, Any],
+     secret: str,
+     *,
+     transport: Transport = urllib_transport,
+-    headers: dict[str, str] = {},  # noqa: B006
++    headers: Mapping[str, str] | None = None,
+     max_attempts: int = 5,
+     base_delay: float = 1.0,
+     max_delay: float = 60.0,
+@@ -82,20 +88,25 @@ def deliver(
+ ) -> DeliveryResult:
+     body = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+     timestamp = int(now())
+-    headers.setdefault("X-Webhook-Id", uuid.uuid4().hex)
+-    headers["Content-Type"] = "application/json"
+-    headers["X-Webhook-Timestamp"] = str(timestamp)
+-    headers["X-Webhook-Signature"] = sign(secret, body, timestamp)
+-
+-    last_status = None
+-    for attempt in range(max_attempts + 1):
++    request_headers = dict(headers or {})
++    request_headers.setdefault("X-Webhook-Id", uuid.uuid4().hex)
++    request_headers["Content-Type"] = "application/json"
++    request_headers["X-Webhook-Timestamp"] = str(timestamp)
++    request_headers["X-Webhook-Signature"] = sign(secret, body, timestamp)
++
++    last_status: int | None = None
++    last_error: Exception | None = None
++    for attempt in range(1, max_attempts + 1):
+         try:
+-            response = transport(url, body, headers, timeout)
+-            if response.status < 300:
+-                return DeliveryResult(attempt + 1, response.status, headers["X-Webhook-Id"])
+-            last_status = response.status
+-        except Exception:
+-            pass
++            response = transport(url, body, dict(request_headers), timeout)
++        except Exception as exc:
++            last_status, last_error = None, exc
++        else:
++            if 200 <= response.status < 300:
++                return DeliveryResult(attempt, response.status, request_headers["X-Webhook-Id"])
++            if not _is_transient(response.status):
++                raise DeliveryFailed(attempt, response.status, None)
++            last_status, last_error = response.status, None
+         if attempt < max_attempts:
+-            sleep(min(base_delay * 2 ** (attempt + 1), max_delay))
+-    return None  # type: ignore[return-value]
++            sleep(min(base_delay * 2 ** (attempt - 1), max_delay))
++    raise DeliveryFailed(max_attempts, last_status, last_error)
+diff --git a/hooks/signing.py b/hooks/signing.py
+index 5895f53..d016938 100644
+--- a/hooks/signing.py
++++ b/hooks/signing.py
+@@ -11,8 +11,13 @@ DEFAULT_TOLERANCE_SECONDS = 300
+ 
+ 
+ def sign(secret: str, body: bytes, timestamp: int) -> str:
+-    """Return `v1=<hex>`, an HMAC-SHA256 of the request body."""
+-    mac = hmac.new(secret.encode(), body, hashlib.sha256)
++    """Return `v1=<hex>`, an HMAC-SHA256 over `"<timestamp>." + body`.
++
++    The timestamp is part of the signed message so a captured request cannot be replayed
++    with a refreshed timestamp.
++    """
++    message = str(timestamp).encode() + b"." + body
++    mac = hmac.new(secret.encode(), message, hashlib.sha256)
+     return "v1=" + mac.hexdigest()
+ 
+ 
+@@ -26,5 +31,8 @@ def verify(
+     tolerance: int = DEFAULT_TOLERANCE_SECONDS,
+ ) -> bool:
+     """Check a received signature. Rejects stale or far-future timestamps."""
++    if abs(now() - timestamp) > tolerance:
++        return False
+     expected = sign(secret, body, timestamp)
+-    return signature == expected
++    # Compare as bytes: compare_digest raises TypeError for non-ASCII str input.
++    return hmac.compare_digest(signature.encode(), expected.encode())

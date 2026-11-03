@@ -1,0 +1,82 @@
+diff --git a/ledger/reconcile.py b/ledger/reconcile.py
+index 81d059d..13d7bb6 100644
+--- a/ledger/reconcile.py
++++ b/ledger/reconcile.py
+@@ -9,10 +9,15 @@ Rules (these are the contract, and finance relies on the exact tie-breaking):
+   (case-insensitive; an empty reference never hits), then the smallest date difference,
+   then the entry that appears first in the input.
+ * Each entry is matched at most once.
++
++Implementation: entries are bucketed by (account, amount) and each bucket is kept sorted
++by booking date. A transaction binary-searches its tolerance window instead of scanning
++every entry, and a matched entry is removed from its bucket so it is never revisited.
+ """
+ 
+ from __future__ import annotations
+ 
++from bisect import bisect_left
+ from collections.abc import Sequence
+ 
+ from .models import LedgerEntry, Match, ReconciliationResult, Transaction
+@@ -28,31 +33,42 @@ def reconcile(
+     if len({e.id for e in entries}) != len(entries):
+         raise ValueError("duplicate ledger entry id")
+ 
++    # (account, amount) -> [(booking ordinal, input position)] sorted ascending.
++    buckets: dict[tuple[str, int], list[tuple[int, int]]] = {}
++    for position, entry in enumerate(entries):
++        key = (entry.account, entry.amount_cents)
++        buckets.setdefault(key, []).append((entry.booked.toordinal(), position))
++    for bucket in buckets.values():
++        bucket.sort()
++
+     matches: list[Match] = []
+     unmatched_transactions: list[Transaction] = []
+-    matched_entry_ids: list[str] = []
++    matched_positions: set[int] = set()
+ 
+     for txn in transactions:
+-        candidates = []
+-        for position, entry in enumerate(entries):
+-            if entry.account != txn.account or entry.amount_cents != txn.amount_cents:
+-                continue
+-            diff = abs((txn.posted - entry.booked).days)
+-            if diff > tolerance_days:
+-                continue
+-            if entry.id in matched_entry_ids:
+-                continue
+-            hit = bool(txn.reference) and txn.reference.casefold() in entry.memo.casefold()
+-            candidates.append((not hit, diff, position, entry, hit))
+-
+-        if not candidates:
++        bucket = buckets.get((txn.account, txn.amount_cents))
++        best_index = -1
++        if bucket:
++            posted = txn.posted.toordinal()
++            reference = txn.reference.casefold()
++            best_key: tuple[bool, int, int] | None = None
++            best_hit = False
++            index = bisect_left(bucket, (posted - tolerance_days, -1))
++            while index < len(bucket) and bucket[index][0] <= posted + tolerance_days:
++                ordinal, position = bucket[index]
++                hit = bool(reference) and reference in entries[position].memo.casefold()
++                key = (not hit, abs(ordinal - posted), position)
++                if best_key is None or key < best_key:
++                    best_key, best_index, best_hit = key, index, hit
++                index += 1
++
++        if best_index < 0:
+             unmatched_transactions.append(txn)
+             continue
+ 
+-        candidates.sort(key=lambda c: (c[0], c[1], c[2]))
+-        _, diff, _, entry, hit = candidates[0]
+-        matched_entry_ids.append(entry.id)
+-        matches.append(Match(txn.id, entry.id, diff, hit))
++        _, position = bucket.pop(best_index)  # type: ignore[union-attr]
++        matched_positions.add(position)
++        matches.append(Match(txn.id, entries[position].id, best_key[1], best_hit))  # type: ignore[index]
+ 
+-    unmatched_entries = [e for e in entries if e.id not in matched_entry_ids]
++    unmatched_entries = [e for p, e in enumerate(entries) if p not in matched_positions]
+     return ReconciliationResult(matches, unmatched_transactions, unmatched_entries)

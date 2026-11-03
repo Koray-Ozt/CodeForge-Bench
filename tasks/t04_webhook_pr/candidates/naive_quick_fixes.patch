@@ -1,0 +1,23 @@
+diff --git a/hooks/delivery.py b/hooks/delivery.py
+index a36fd68..8165d80 100644
+--- a/hooks/delivery.py
++++ b/hooks/delivery.py
+@@ -88,7 +88,7 @@ def deliver(
+     headers["X-Webhook-Signature"] = sign(secret, body, timestamp)
+ 
+     last_status = None
+-    for attempt in range(max_attempts + 1):
++    for attempt in range(max_attempts):
+         try:
+             response = transport(url, body, headers, timeout)
+             if response.status < 300:
+diff --git a/hooks/signing.py b/hooks/signing.py
+index 5895f53..4b8db4c 100644
+--- a/hooks/signing.py
++++ b/hooks/signing.py
+@@ -27,4 +27,4 @@ def verify(
+ ) -> bool:
+     """Check a received signature. Rejects stale or far-future timestamps."""
+     expected = sign(secret, body, timestamp)
+-    return signature == expected
++    return hmac.compare_digest(signature, expected)

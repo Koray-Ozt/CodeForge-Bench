@@ -1,0 +1,75 @@
+diff --git a/inventory/service.py b/inventory/service.py
+index 3233026..516c8e3 100644
+--- a/inventory/service.py
++++ b/inventory/service.py
+@@ -7,6 +7,7 @@ The service is shared by all request-handling threads in the process.
+ 
+ from __future__ import annotations
+ 
++import threading
+ import time
+ import uuid
+ from collections.abc import Callable
+@@ -47,11 +48,12 @@ class ReservationService:
+         self._ttl = ttl_seconds
+         self._clock = clock
+         self._reservations: dict[str, Reservation] = {}
++        self._lock = threading.RLock()
+ 
+     def available(self, sku: str) -> int:
+         return self._store.get(sku)
+ 
+-    def reserve(self, sku: str, quantity: int, holder: str) -> Reservation:
++    def _reserve(self, sku: str, quantity: int, holder: str) -> Reservation:
+         if quantity <= 0:
+             raise ValueError("quantity must be positive")
+         available = self._store.get(sku)
+@@ -80,7 +82,7 @@ class ReservationService:
+             raise
+         return done
+ 
+-    def confirm(self, reservation_id: str) -> Reservation:
++    def _confirm(self, reservation_id: str) -> Reservation:
+         """Make a hold permanent. Units are not returned to stock."""
+         reservation = self._reservations.get(reservation_id)
+         if reservation is None:
+@@ -88,7 +90,7 @@ class ReservationService:
+         del self._reservations[reservation_id]
+         return reservation
+ 
+-    def release(self, reservation_id: str) -> bool:
++    def _release(self, reservation_id: str) -> bool:
+         """Return held units to stock. Returns False if the hold is already gone."""
+         reservation = self._reservations.get(reservation_id)
+         if reservation is None:
+@@ -99,7 +101,7 @@ class ReservationService:
+         del self._reservations[reservation_id]
+         return True
+ 
+-    def sweep_expired(self) -> int:
++    def _sweep_expired(self) -> int:
+         """Release every hold past its expiry. Returns how many were released."""
+         now = self._clock()
+         released = 0
+@@ -108,5 +110,21 @@ class ReservationService:
+                 released += 1
+         return released
+ 
++    def reserve(self, sku: str, quantity: int, holder: str) -> Reservation:
++        with self._lock:
++            return self._reserve(sku, quantity, holder)
++
++    def confirm(self, reservation_id: str) -> Reservation:
++        with self._lock:
++            return self._confirm(reservation_id)
++
++    def release(self, reservation_id: str) -> bool:
++        with self._lock:
++            return self._release(reservation_id)
++
++    def sweep_expired(self) -> int:
++        with self._lock:
++            return self._sweep_expired()
++
+     def active_count(self) -> int:
+         return len(self._reservations)

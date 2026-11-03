@@ -1,0 +1,19 @@
+id = "t03_pricing_legacy"
+title = "Refactor the legacy order pricing function"
+category = "refactoring"
+
+[limits]
+timeout_s = 120
+memory = "256m"
+cpus = "1"
+pids = 64
+
+[[candidates]]
+patch = "candidates/patch_in_place.patch"
+expect = "failed_tests"
+note = "Adds Norway and SAVE15 as more branches in the 120-line function: behavior right, maintainability gate fails."
+
+[[candidates]]
+patch = "candidates/refactor_changes_rounding.patch"
+expect = "failed_tests"
+note = "Clean refactor that 'simplifies' banker's rounding to half-up: the golden master catches the drift."

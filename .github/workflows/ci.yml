@@ -1,0 +1,45 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint-and-unit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: ruff check .
+      - run: ruff format --check .
+      - name: Runner unit tests (no Docker)
+        run: pytest -m "not docker"
+
+  verify-tasks:
+    # Every task must fail on its baseline, pass with its reference solution, and fail
+    # with each shipped wrong candidate, all inside the resource-limited container.
+    runs-on: ubuntu-latest
+    needs: lint-and-unit
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - run: codeforge build-image
+      - name: Verify all tasks
+        run: codeforge verify --all --out results/ci
+      - name: Sandbox isolation tests
+        run: pytest -m docker
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: verify-report
+          path: results/ci

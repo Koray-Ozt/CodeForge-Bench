@@ -1,0 +1,19 @@
+id = "t05_orders_api"
+title = "Pagination, idempotency keys and optimistic locking for an orders API"
+category = "feature"
+
+[limits]
+timeout_s = 180
+memory = "256m"
+cpus = "1"
+pids = 128
+
+[[candidates]]
+patch = "candidates/offset_cursor_and_check_then_insert.patch"
+expect = "failed_tests"
+note = "OFFSET-based cursors skip rows when earlier rows leave the filter; SELECT-then-INSERT idempotency races."
+
+[[candidates]]
+patch = "candidates/no_in_place_migration.patch"
+expect = "failed_tests"
+note = "Everything works on a fresh database, but existing production databases are never upgraded."

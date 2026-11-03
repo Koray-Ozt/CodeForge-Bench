@@ -1,0 +1,22 @@
+{
+  "findings": [
+    {"id": "D1", "file": "hooks/signing.py", "start": 30, "end": 30, "category": "security",
+     "title": "Signature compared with == (timing side channel); use hmac.compare_digest on bytes"},
+    {"id": "D2", "file": "hooks/signing.py", "start": 29, "end": 30, "category": "security",
+     "title": "verify() accepts any timestamp: `now` and `tolerance` are never used, so captured requests replay forever"},
+    {"id": "D3", "file": "hooks/signing.py", "start": 15, "end": 15, "category": "security",
+     "title": "Timestamp is not part of the signed message, so it can be changed without invalidating the signature"},
+    {"id": "D4", "file": "hooks/delivery.py", "start": 94, "end": 96, "category": "reliability",
+     "title": "Every non-2xx response is retried, including permanent 4xx and 3xx failures"},
+    {"id": "D5", "file": "hooks/delivery.py", "start": 91, "end": 91, "category": "correctness",
+     "title": "range(max_attempts + 1) makes one more attempt than max_attempts"},
+    {"id": "D6", "file": "hooks/delivery.py", "start": 100, "end": 100, "category": "correctness",
+     "title": "Backoff exponent is off by one: first wait is 2x base_delay instead of base_delay"},
+    {"id": "D7", "file": "hooks/delivery.py", "start": 101, "end": 101, "category": "error-handling",
+     "title": "Exhausted retries return None silently (with a type: ignore) instead of raising DeliveryFailed"},
+    {"id": "D8", "file": "hooks/delivery.py", "start": 97, "end": 98, "category": "error-handling",
+     "title": "except Exception: pass swallows programming errors and hides failure causes"},
+    {"id": "D9", "file": "hooks/delivery.py", "start": 75, "end": 75, "alt_lines": [85], "category": "state",
+     "title": "Mutable default `headers={}` is shared across calls: same X-Webhook-Id for every delivery and the caller's dict is mutated"}
+  ]
+}

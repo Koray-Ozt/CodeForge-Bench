@@ -1,0 +1,111 @@
+diff --git a/inventory/service.py b/inventory/service.py
+index 3233026..a56a61b 100644
+--- a/inventory/service.py
++++ b/inventory/service.py
+@@ -3,10 +3,19 @@
+ A reservation holds units of a SKU for a limited time while the customer pays.
+ `confirm` makes the hold permanent, `release` (or expiry) returns the units.
+ The service is shared by all request-handling threads in the process.
++
++Concurrency model:
++- `_guard` protects the in-process bookkeeping (`_reservations`, `_sku_locks`) and is
++  never held across a store call.
++- One lock per SKU serializes the read-modify-write on that SKU's stock, so the store
++  round trips for different SKUs still overlap.
++- A hold is claimed (popped) under `_guard` before its units are returned, so
++  `confirm`, `release` and `sweep_expired` can never act on the same hold twice.
+ """
+ 
+ from __future__ import annotations
+ 
++import threading
+ import time
+ import uuid
+ from collections.abc import Callable
+@@ -47,6 +56,15 @@ class ReservationService:
+         self._ttl = ttl_seconds
+         self._clock = clock
+         self._reservations: dict[str, Reservation] = {}
++        self._guard = threading.Lock()
++        self._sku_locks: dict[str, threading.Lock] = {}
++
++    def _sku_lock(self, sku: str) -> threading.Lock:
++        with self._guard:
++            lock = self._sku_locks.get(sku)
++            if lock is None:
++                lock = self._sku_locks[sku] = threading.Lock()
++            return lock
+ 
+     def available(self, sku: str) -> int:
+         return self._store.get(sku)
+@@ -54,10 +72,11 @@ class ReservationService:
+     def reserve(self, sku: str, quantity: int, holder: str) -> Reservation:
+         if quantity <= 0:
+             raise ValueError("quantity must be positive")
+-        available = self._store.get(sku)
+-        if available < quantity:
+-            raise InsufficientStock(sku, quantity, available)
+-        self._store.set(sku, available - quantity)
++        with self._sku_lock(sku):
++            available = self._store.get(sku)
++            if available < quantity:
++                raise InsufficientStock(sku, quantity, available)
++            self._store.set(sku, available - quantity)
+         reservation = Reservation(
+             id=uuid.uuid4().hex,
+             sku=sku,
+@@ -65,7 +84,8 @@ class ReservationService:
+             holder=holder,
+             expires_at=self._clock() + self._ttl,
+         )
+-        self._reservations[reservation.id] = reservation
++        with self._guard:
++            self._reservations[reservation.id] = reservation
+         return reservation
+ 
+     def reserve_many(self, items: dict[str, int], holder: str) -> list[Reservation]:
+@@ -82,31 +102,31 @@ class ReservationService:
+ 
+     def confirm(self, reservation_id: str) -> Reservation:
+         """Make a hold permanent. Units are not returned to stock."""
+-        reservation = self._reservations.get(reservation_id)
++        with self._guard:
++            reservation = self._reservations.pop(reservation_id, None)
+         if reservation is None:
+             raise ReservationNotFound(reservation_id)
+-        del self._reservations[reservation_id]
+         return reservation
+ 
+     def release(self, reservation_id: str) -> bool:
+         """Return held units to stock. Returns False if the hold is already gone."""
+-        reservation = self._reservations.get(reservation_id)
++        with self._guard:
++            reservation = self._reservations.pop(reservation_id, None)
+         if reservation is None:
+             return False
+-        self._store.set(
+-            reservation.sku, self._store.get(reservation.sku) + reservation.quantity
+-        )
+-        del self._reservations[reservation_id]
++        with self._sku_lock(reservation.sku):
++            self._store.set(
++                reservation.sku, self._store.get(reservation.sku) + reservation.quantity
++            )
+         return True
+ 
+     def sweep_expired(self) -> int:
+         """Release every hold past its expiry. Returns how many were released."""
+         now = self._clock()
+-        released = 0
+-        for reservation_id, reservation in list(self._reservations.items()):
+-            if reservation.expires_at <= now and self.release(reservation_id):
+-                released += 1
+-        return released
++        with self._guard:
++            expired = [r.id for r in self._reservations.values() if r.expires_at <= now]
++        return sum(1 for reservation_id in expired if self.release(reservation_id))
+ 
+     def active_count(self) -> int:
+-        return len(self._reservations)
++        with self._guard:
++            return len(self._reservations)

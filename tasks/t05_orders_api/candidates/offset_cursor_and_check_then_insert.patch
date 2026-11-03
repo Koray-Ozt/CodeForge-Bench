@@ -1,0 +1,357 @@
+diff --git a/orders/app.py b/orders/app.py
+index 489899d..ac29060 100644
+--- a/orders/app.py
++++ b/orders/app.py
+@@ -6,6 +6,7 @@ import json
+ import re
+ from http import HTTPStatus
+ from typing import Any
++from urllib.parse import parse_qs
+ 
+ from . import service
+ from .db import connect, init_db
+@@ -13,8 +14,10 @@ from .errors import ApiError
+ 
+ MAX_BODY_BYTES = 64 * 1024
+ ORDER_PATH = re.compile(r"^/orders/(\d+)$")
++IDEMPOTENCY_KEY = re.compile(r"^[\x21-\x7e]{1,128}$")
+ 
+-Response = tuple[int, list[tuple[str, str]], Any]
++Headers = list[tuple[str, str]]
++Response = tuple[int, Headers, Any]
+ 
+ 
+ def _read_json(environ: dict[str, Any]) -> dict[str, Any]:
+@@ -41,24 +44,55 @@ def _customer(environ: dict[str, Any]) -> str:
+     return customer
+ 
+ 
++def _idempotency_key(environ: dict[str, Any]) -> str | None:
++    if "HTTP_IDEMPOTENCY_KEY" not in environ:
++        return None
++    value = environ["HTTP_IDEMPOTENCY_KEY"]
++    if not IDEMPOTENCY_KEY.match(value):
++        raise ApiError(400, "invalid_idempotency_key", "1-128 visible ASCII characters, no spaces")
++    return value
++
++
++def _etag(order: dict[str, Any]) -> Headers:
++    return [("ETag", f'"{order["version"]}"')]
++
++
++def _list_orders(conn, customer: str, environ: dict[str, Any]) -> Response:
++    query = parse_qs(environ.get("QUERY_STRING", ""), keep_blank_values=True)
++
++    def one(name: str) -> str | None:
++        return query[name][-1] if name in query else None
++
++    page = service.list_orders(
++        conn, customer, service.parse_limit(one("limit")), one("cursor"), one("status")
++    )
++    return 200, [], page
++
++
+ def _route(db_path: str, environ: dict[str, Any]) -> Response:
+     method, path = environ["REQUEST_METHOD"], environ["PATH_INFO"]
+     customer = _customer(environ)
+     with connect(db_path) as conn:
+         if path == "/orders":
+             if method == "POST":
+-                return 201, [], service.create_order(conn, customer, _read_json(environ))
++                key = _idempotency_key(environ)
++                order, replayed = service.create_order(conn, customer, _read_json(environ), key)
++                headers = _etag(order) + ([("Idempotent-Replay", "true")] if replayed else [])
++                return 201, headers, order
+             if method == "GET":
+-                return 200, [], {"items": service.list_orders(conn, customer)}
++                return _list_orders(conn, customer, environ)
+             raise ApiError(405, "method_not_allowed")
+         match = ORDER_PATH.match(path)
+         if match:
+             order_id = int(match.group(1))
+             if method == "GET":
+-                return 200, [], service.get_order(conn, customer, order_id)
++                order = service.get_order(conn, customer, order_id)
++                return 200, _etag(order), order
+             if method == "PATCH":
+                 body = _read_json(environ)
+-                return 200, [], service.update_order(conn, customer, order_id, body)
++                if_match = environ.get("HTTP_IF_MATCH")
++                order = service.update_order(conn, customer, order_id, body, if_match)
++                return 200, _etag(order), order
+             raise ApiError(405, "method_not_allowed")
+     raise ApiError(404, "not_found", f"no route for {path}")
+ 
+diff --git a/orders/db.py b/orders/db.py
+index f6ddf28..6753545 100644
+--- a/orders/db.py
++++ b/orders/db.py
+@@ -1,4 +1,7 @@
+-"""SQLite access. One short-lived connection per request; the file is shared by workers."""
++"""SQLite access. One short-lived connection per request; the file is shared by workers.
++
++Schema changes are applied in place by `init_db`, which every worker runs at start-up.
++"""
+ 
+ from __future__ import annotations
+ 
+@@ -20,10 +23,36 @@ CREATE TABLE IF NOT EXISTS orders (
+ CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders (customer_id, id);
+ """
+ 
++# Columns added after the first release: (name, DDL). Existing rows get the default.
++ADDED_COLUMNS = (
++    ("version", "INTEGER NOT NULL DEFAULT 1"),
++    ("idempotency_key", "TEXT"),
++    ("request_hash", "TEXT"),
++)
++
++# Partial unique index: only orders created with a key take part, so keyless orders are free.
++IDEMPOTENCY_INDEX = (
++    "CREATE INDEX IF NOT EXISTS idx_orders_idempotency"
++    " ON orders (customer_id, idempotency_key) WHERE idempotency_key IS NOT NULL"
++)
++
+ 
+ def init_db(path: str) -> None:
+     with connect(path) as conn:
+         conn.executescript(SCHEMA)
++        # IMMEDIATE takes the write lock up front, so two workers starting together
++        # cannot both decide a column is missing.
++        conn.execute("BEGIN IMMEDIATE")
++        try:
++            existing = {row["name"] for row in conn.execute("PRAGMA table_info(orders)")}
++            for name, ddl in ADDED_COLUMNS:
++                if name not in existing:
++                    conn.execute(f"ALTER TABLE orders ADD COLUMN {name} {ddl}")
++            conn.execute(IDEMPOTENCY_INDEX)
++            conn.execute("COMMIT")
++        except BaseException:
++            conn.execute("ROLLBACK")
++            raise
+ 
+ 
+ @contextmanager
+diff --git a/orders/service.py b/orders/service.py
+index 6d41e4c..90d2e64 100644
+--- a/orders/service.py
++++ b/orders/service.py
+@@ -2,7 +2,10 @@
+ 
+ from __future__ import annotations
+ 
++import base64
++import hashlib
+ import json
++import re
+ import sqlite3
+ from datetime import UTC, datetime
+ from typing import Any
+@@ -17,6 +20,12 @@ TRANSITIONS = {
+     "cancelled": set(),
+ }
+ MAX_ITEMS = 100
++DEFAULT_LIMIT, MAX_LIMIT = 20, 100
++ANY_VERSION = -1  # If-Match: *
++_CURSOR = re.compile(r"^v1:(\d{1,18})$")
++_IF_MATCH = re.compile(r'^(?:W/)?"(\d{1,18})"$|^(\d{1,18})$')
++_LIMIT = re.compile(r"^\d{1,3}$", re.ASCII)
++_UPDATE_RETRIES = 5
+ 
+ 
+ def _now() -> str:
+@@ -31,6 +40,7 @@ def _to_dict(row: sqlite3.Row) -> dict[str, Any]:
+         "items": json.loads(row["items_json"]),
+         "total_cents": row["total_cents"],
+         "notes": row["notes"],
++        "version": row["version"],
+         "created_at": row["created_at"],
+         "updated_at": row["updated_at"],
+     }
+@@ -53,19 +63,62 @@ def _validate_items(raw: Any) -> list[dict[str, Any]]:
+     return items
+ 
+ 
+-def create_order(conn: sqlite3.Connection, customer_id: str, body: dict[str, Any]) -> dict[str, Any]:
+-    items = _validate_items(body.get("items"))
+-    notes = body.get("notes", "")
++def _validate_notes(notes: Any) -> str:
+     if not isinstance(notes, str) or len(notes) > 500:
+         raise ApiError(400, "invalid_notes", "notes must be a string of at most 500 characters")
++    return notes
++
++
++def _fingerprint(items: list[dict[str, Any]], notes: str) -> str:
++    """Hash of the normalized request, so key order and whitespace do not matter."""
++    canonical = json.dumps({"items": items, "notes": notes}, sort_keys=True, separators=(",", ":"))
++    return hashlib.sha256(canonical.encode()).hexdigest()
++
++
++def create_order(
++    conn: sqlite3.Connection,
++    customer_id: str,
++    body: dict[str, Any],
++    idempotency_key: str | None = None,
++) -> tuple[dict[str, Any], bool]:
++    """Create an order. Returns (order, replayed)."""
++    items = _validate_items(body.get("items"))
++    notes = _validate_notes(body.get("notes", ""))
++    fingerprint = _fingerprint(items, notes)
+     total = sum(i["qty"] * i["unit_price_cents"] for i in items)
+     now = _now()
+-    cur = conn.execute(
+-        "INSERT INTO orders (customer_id, status, items_json, total_cents, notes, created_at,"
+-        " updated_at) VALUES (?, 'new', ?, ?, ?, ?, ?)",
+-        (customer_id, json.dumps(items), total, notes, now, now),
+-    )
+-    return get_order(conn, customer_id, cur.lastrowid)
++    if idempotency_key is not None:
++        row = conn.execute(
++            "SELECT * FROM orders WHERE customer_id = ? AND idempotency_key = ?",
++            (customer_id, idempotency_key),
++        ).fetchone()
++        if row is not None:
++            if row["request_hash"] != fingerprint:
++                raise ApiError(422, "idempotency_key_reuse", "different request")
++            return _to_dict(row), True
++    try:
++        cur = conn.execute(
++            "INSERT INTO orders (customer_id, status, items_json, total_cents, notes, created_at,"
++            " updated_at, idempotency_key, request_hash)"
++            " VALUES (?, 'new', ?, ?, ?, ?, ?, ?, ?)",
++            (customer_id, json.dumps(items), total, notes, now, now, idempotency_key, fingerprint),
++        )
++    except sqlite3.IntegrityError:
++        # The unique index is the arbiter: whoever inserted first won, everyone else replays.
++        if idempotency_key is None:
++            raise
++        row = conn.execute(
++            "SELECT * FROM orders WHERE customer_id = ? AND idempotency_key = ?",
++            (customer_id, idempotency_key),
++        ).fetchone()
++        if row is None:
++            raise
++        if row["request_hash"] != fingerprint:
++            raise ApiError(
++                422, "idempotency_key_reuse", "Idempotency-Key was used with a different request"
++            ) from None
++        return _to_dict(row), True
++    return get_order(conn, customer_id, cur.lastrowid), False
+ 
+ 
+ def get_order(conn: sqlite3.Connection, customer_id: str, order_id: int) -> dict[str, Any]:
+@@ -77,17 +130,67 @@ def get_order(conn: sqlite3.Connection, customer_id: str, order_id: int) -> dict
+     return _to_dict(row)
+ 
+ 
+-def list_orders(conn: sqlite3.Connection, customer_id: str) -> list[dict[str, Any]]:
+-    rows = conn.execute(
+-        "SELECT * FROM orders WHERE customer_id = ? ORDER BY id", (customer_id,)
+-    ).fetchall()
+-    return [_to_dict(r) for r in rows]
++def encode_cursor(order_id: int) -> str:
++    return base64.urlsafe_b64encode(f"v1:{order_id}".encode()).decode().rstrip("=")
+ 
+ 
+-def update_order(
+-    conn: sqlite3.Connection, customer_id: str, order_id: int, body: dict[str, Any]
++def decode_cursor(cursor: str) -> int:
++    try:
++        text = base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode("ascii")
++    except ValueError:
++        raise ApiError(400, "invalid_cursor") from None
++    match = _CURSOR.match(text)
++    if match is None:
++        raise ApiError(400, "invalid_cursor")
++    return int(match.group(1))
++
++
++def parse_limit(raw: str | None) -> int:
++    if raw is None:
++        return DEFAULT_LIMIT
++    if not _LIMIT.match(raw) or not 1 <= int(raw) <= MAX_LIMIT:
++        raise ApiError(400, "invalid_limit", f"limit must be an integer 1..{MAX_LIMIT}")
++    return int(raw)
++
++
++def list_orders(
++    conn: sqlite3.Connection,
++    customer_id: str,
++    limit: int = DEFAULT_LIMIT,
++    cursor: str | None = None,
++    status: str | None = None,
+ ) -> dict[str, Any]:
+-    current = get_order(conn, customer_id, order_id)
++    """Keyset pagination on the primary key: stable while orders are added or change status."""
++    if status is not None and status not in STATUSES:
++        raise ApiError(400, "invalid_status", f"status must be one of {', '.join(STATUSES)}")
++    after = decode_cursor(cursor) if cursor else 0  # now an OFFSET, not an id
++    sql = "SELECT * FROM orders WHERE customer_id = ? AND ? >= 0"
++    args: list[Any] = [customer_id, after]
++    if status is not None:
++        sql += " AND status = ?"
++        args.append(status)
++    rows = conn.execute(sql + " ORDER BY id LIMIT ? OFFSET ?", (*args, limit + 1, after)).fetchall()
++    page = rows[:limit]
++    more = len(rows) > limit
++    return {
++        "items": [_to_dict(r) for r in page],
++        "next_cursor": encode_cursor(after + len(page)) if more else None,
++    }
++
++
++def parse_if_match(header: str | None) -> int:
++    if header is None or not header.strip():
++        raise ApiError(428, "precondition_required", "If-Match header is required")
++    value = header.strip()
++    if value == "*":
++        return ANY_VERSION
++    match = _IF_MATCH.match(value)
++    if match is None:
++        raise ApiError(400, "invalid_if_match", "If-Match must be an ETag such as \"3\"")
++    return int(match.group(1) or match.group(2))
++
++
++def _apply_changes(current: dict[str, Any], body: dict[str, Any]) -> tuple[str, str]:
+     status, notes = current["status"], current["notes"]
+     if "status" in body:
+         new_status = body["status"]
+@@ -97,11 +200,30 @@ def update_order(
+             raise ApiError(409, "invalid_transition", f"cannot go from {status} to {new_status}")
+         status = new_status
+     if "notes" in body:
+-        notes = body["notes"]
+-        if not isinstance(notes, str) or len(notes) > 500:
+-            raise ApiError(400, "invalid_notes", "notes must be a string of at most 500 characters")
+-    conn.execute(
+-        "UPDATE orders SET status = ?, notes = ?, updated_at = ? WHERE id = ?",
+-        (status, notes, _now(), order_id),
+-    )
+-    return get_order(conn, customer_id, order_id)
++        notes = _validate_notes(body["notes"])
++    return status, notes
++
++
++def update_order(
++    conn: sqlite3.Connection,
++    customer_id: str,
++    order_id: int,
++    body: dict[str, Any],
++    if_match: str | None,
++) -> dict[str, Any]:
++    current = get_order(conn, customer_id, order_id)  # 404 before any precondition error
++    wanted = parse_if_match(if_match)
++    for _ in range(_UPDATE_RETRIES):
++        if wanted != ANY_VERSION and wanted != current["version"]:
++            raise ApiError(412, "precondition_failed", "order was modified by someone else")
++        status, notes = _apply_changes(current, body)
++        # Compare-and-set: the UPDATE only applies if nobody changed the row since we read it.
++        cur = conn.execute(
++            "UPDATE orders SET status = ?, notes = ?, updated_at = ?, version = version + 1"
++            " WHERE id = ? AND version = ?",
++            (status, notes, _now(), order_id, current["version"]),
++        )
++        if cur.rowcount == 1:
++            return get_order(conn, customer_id, order_id)
++        current = get_order(conn, customer_id, order_id)  # lost the race: re-read and re-check
++    raise ApiError(412, "precondition_failed", "order is being modified concurrently")

@@ -1,0 +1,51 @@
+diff --git a/ledger/reconcile.py b/ledger/reconcile.py
+index 81d059d..c3475f9 100644
+--- a/ledger/reconcile.py
++++ b/ledger/reconcile.py
+@@ -28,31 +28,27 @@ def reconcile(
+     if len({e.id for e in entries}) != len(entries):
+         raise ValueError("duplicate ledger entry id")
+ 
++    index: dict[tuple[str, int], list[int]] = {}
++    for position, entry in enumerate(entries):
++        index.setdefault((entry.account, entry.amount_cents), []).append(position)
++
+     matches: list[Match] = []
+     unmatched_transactions: list[Transaction] = []
+-    matched_entry_ids: list[str] = []
++    used: set[int] = set()
+ 
+     for txn in transactions:
+-        candidates = []
+-        for position, entry in enumerate(entries):
+-            if entry.account != txn.account or entry.amount_cents != txn.amount_cents:
+-                continue
+-            diff = abs((txn.posted - entry.booked).days)
+-            if diff > tolerance_days:
+-                continue
+-            if entry.id in matched_entry_ids:
++        best = None
++        for position in index.get((txn.account, txn.amount_cents), ()):
++            if position in used:
+                 continue
+-            hit = bool(txn.reference) and txn.reference.casefold() in entry.memo.casefold()
+-            candidates.append((not hit, diff, position, entry, hit))
+-
+-        if not candidates:
++            diff = abs((txn.posted - entries[position].booked).days)
++            if diff <= tolerance_days and (best is None or diff < best[0]):
++                best = (diff, position)
++        if best is None:
+             unmatched_transactions.append(txn)
+             continue
++        used.add(best[1])
++        matches.append(Match(txn.id, entries[best[1]].id, best[0], False))
+ 
+-        candidates.sort(key=lambda c: (c[0], c[1], c[2]))
+-        _, diff, _, entry, hit = candidates[0]
+-        matched_entry_ids.append(entry.id)
+-        matches.append(Match(txn.id, entry.id, diff, hit))
+-
+-    unmatched_entries = [e for e in entries if e.id not in matched_entry_ids]
++    unmatched_entries = [e for p, e in enumerate(entries) if p not in used]
+     return ReconciliationResult(matches, unmatched_transactions, unmatched_entries)

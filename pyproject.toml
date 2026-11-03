@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeforge-bench"
+version = "0.1.0"
+description = "Software engineering evaluation benchmark for AI-generated patches"
+requires-python = ">=3.12"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6"]
+
+[project.scripts]
+codeforge = "codeforge.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+markers = ["docker: needs a working Docker daemon and the codeforge-runner image"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = [".venv", "tasks/*/repo", "tasks/*/reference", "tasks/*/candidates"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"tasks/*/tests/*" = ["B", "SIM", "E501"]
+"tasks/*/hidden_tests/*" = ["B", "SIM", "E501"]
+"tests/test_results_and_report.py" = ["E501"]

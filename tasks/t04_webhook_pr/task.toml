@@ -1,0 +1,23 @@
+id = "t04_webhook_pr"
+title = "Review and repair a defective webhook-delivery pull request"
+category = "code-review"
+
+[limits]
+timeout_s = 120
+memory = "256m"
+cpus = "1"
+pids = 64
+
+[scoring]
+# Tests named test_defect_NN_* are grouped per defect in the report.
+defect_pattern = 'test_defect_(\d+)'
+
+[[candidates]]
+patch = "candidates/naive_quick_fixes.patch"
+expect = "failed_tests"
+note = "Fixes the obvious two: compare_digest on str (crashes on non-ASCII input) and the loop bound."
+
+[[candidates]]
+patch = "candidates/fix_keeps_broad_except.patch"
+expect = "failed_tests"
+note = "Resolves 8 of 9 defects but still catches every Exception."

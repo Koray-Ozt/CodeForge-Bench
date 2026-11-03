@@ -1,0 +1,1270 @@
+[
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 3000,
+     "net": 3000,
+     "qty": 2,
+     "sku": "A",
+     "tax": 570,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 499,
+   "subtotal": 3000,
+   "tax": 665,
+   "total": 4164
+  },
+  "name": "plain_de",
+  "order": {
+   "lines": [
+    {
+     "qty": 2,
+     "sku": "A",
+     "unit_price_cents": 1500
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 2000,
+     "net": 2000,
+     "qty": 1,
+     "sku": "B",
+     "tax": 140,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 499,
+   "subtotal": 2000,
+   "tax": 235,
+   "total": 2734
+  },
+  "name": "books_reduced_rate_de",
+  "order": {
+   "lines": [
+    {
+     "category": "books",
+     "qty": 1,
+     "sku": "B",
+     "unit_price_cents": 2000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 2000,
+     "net": 2000,
+     "qty": 1,
+     "sku": "B",
+     "tax": 400,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 499,
+   "subtotal": 2000,
+   "tax": 500,
+   "total": 2999
+  },
+  "name": "books_full_rate_outside_de",
+  "order": {
+   "country": "AT",
+   "lines": [
+    {
+     "category": "books",
+     "qty": 1,
+     "sku": "B",
+     "unit_price_cents": 2000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 5000,
+     "net": 5000,
+     "qty": 1,
+     "sku": "G",
+     "tax": 0,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 5000,
+   "tax": 0,
+   "total": 5000
+  },
+  "name": "gift_card_untaxed_undiscounted",
+  "order": {
+   "coupon": "SAVE10",
+   "customer": {
+    "tier": "gold"
+   },
+   "lines": [
+    {
+     "category": "gift_card",
+     "qty": 1,
+     "sku": "G",
+     "unit_price_cents": 5000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 9000,
+     "net": 9000,
+     "qty": 9,
+     "sku": "A",
+     "tax": 1710,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 9000,
+   "tax": 1710,
+   "total": 10710
+  },
+  "name": "volume_9_no_discount",
+  "order": {
+   "lines": [
+    {
+     "qty": 9,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "volume"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 500
+   },
+   "lines": [
+    {
+     "gross": 10000,
+     "net": 9500,
+     "qty": 10,
+     "sku": "A",
+     "tax": 1805,
+     "volume_discount": 500
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 9500,
+   "tax": 1805,
+   "total": 11305
+  },
+  "name": "volume_10_five_percent",
+  "order": {
+   "lines": [
+    {
+     "qty": 10,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "volume"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 2450
+   },
+   "lines": [
+    {
+     "gross": 49000,
+     "net": 46550,
+     "qty": 49,
+     "sku": "A",
+     "tax": 8844,
+     "volume_discount": 2450
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 46550,
+   "tax": 8844,
+   "total": 55394
+  },
+  "name": "volume_49_five_percent",
+  "order": {
+   "lines": [
+    {
+     "qty": 49,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "volume"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 5000
+   },
+   "lines": [
+    {
+     "gross": 50000,
+     "net": 45000,
+     "qty": 50,
+     "sku": "A",
+     "tax": 8550,
+     "volume_discount": 5000
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 45000,
+   "tax": 8550,
+   "total": 53550
+  },
+  "name": "volume_50_ten_percent",
+  "order": {
+   "lines": [
+    {
+     "qty": 50,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "volume"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 502
+   },
+   "lines": [
+    {
+     "gross": 10050,
+     "net": 9548,
+     "qty": 10,
+     "sku": "A",
+     "tax": 1814,
+     "volume_discount": 502
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 9548,
+   "tax": 1814,
+   "total": 11362
+  },
+  "name": "half_even_rounding_quirk",
+  "order": {
+   "lines": [
+    {
+     "qty": 10,
+     "sku": "A",
+     "unit_price_cents": 1005
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "tier:gold"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 500,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 9999,
+     "net": 9999,
+     "qty": 3,
+     "sku": "A",
+     "tax": 1805,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 9999,
+   "tax": 1805,
+   "total": 11304
+  },
+  "name": "gold_tier",
+  "order": {
+   "customer": {
+    "tier": "gold"
+   },
+   "lines": [
+    {
+     "qty": 3,
+     "sku": "A",
+     "unit_price_cents": 3333
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "tier:platinum"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 800,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 9999,
+     "net": 9999,
+     "qty": 3,
+     "sku": "A",
+     "tax": 1748,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 9999,
+   "tax": 1748,
+   "total": 10947
+  },
+  "name": "platinum_tier",
+  "order": {
+   "customer": {
+    "tier": "platinum"
+   },
+   "lines": [
+    {
+     "qty": 3,
+     "sku": "A",
+     "unit_price_cents": 3333
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "coupon:SAVE10"
+   ],
+   "discounts": {
+    "coupon": 1600,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 16000,
+     "net": 16000,
+     "qty": 4,
+     "sku": "A",
+     "tax": 2736,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 16000,
+   "tax": 2736,
+   "total": 17136
+  },
+  "name": "save10_standard",
+  "order": {
+   "coupon": "SAVE10",
+   "lines": [
+    {
+     "qty": 4,
+     "sku": "A",
+     "unit_price_cents": 4000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "coupon:SAVE10"
+   ],
+   "discounts": {
+    "coupon": 5000,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 900000,
+     "net": 900000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 170050,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 900000,
+   "tax": 170050,
+   "total": 1065050
+  },
+  "name": "save10_cap_5000",
+  "order": {
+   "coupon": "SAVE10",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 900000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "tier:platinum"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 1280,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 16000,
+     "net": 16000,
+     "qty": 4,
+     "sku": "A",
+     "tax": 2797,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 16000,
+   "tax": 2797,
+   "total": 17517
+  },
+  "name": "save10_ignored_for_platinum",
+  "order": {
+   "coupon": "save10",
+   "customer": {
+    "tier": "platinum"
+   },
+   "lines": [
+    {
+     "qty": 4,
+     "sku": "A",
+     "unit_price_cents": 4000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "tier:gold",
+    "coupon:SAVE10"
+   ],
+   "discounts": {
+    "coupon": 1520,
+    "tier": 800,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 16000,
+     "net": 16000,
+     "qty": 4,
+     "sku": "A",
+     "tax": 2599,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 16000,
+   "tax": 2599,
+   "total": 16279
+  },
+  "name": "save10_after_gold_discount",
+  "order": {
+   "coupon": "SAVE10",
+   "customer": {
+    "tier": "gold"
+   },
+   "lines": [
+    {
+     "qty": 4,
+     "sku": "A",
+     "unit_price_cents": 4000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 1999,
+     "net": 1999,
+     "qty": 1,
+     "sku": "A",
+     "tax": 380,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 499,
+   "subtotal": 1999,
+   "tax": 475,
+   "total": 2973
+  },
+  "name": "fixed5_below_threshold",
+  "order": {
+   "coupon": "FIXED5",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1999
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "coupon:FIXED5"
+   ],
+   "discounts": {
+    "coupon": 500,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 2000,
+     "net": 2000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 285,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 499,
+   "subtotal": 2000,
+   "tax": 380,
+   "total": 2379
+  },
+  "name": "fixed5_at_threshold",
+  "order": {
+   "coupon": "FIXED5",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 2000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "coupon:FREESHIP"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 1000,
+     "net": 1000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 190,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 1000,
+   "tax": 190,
+   "total": 1190
+  },
+  "name": "freeship_standard",
+  "order": {
+   "coupon": "FREESHIP",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "coupon:FREESHIP"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 1000,
+     "net": 1000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 190,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 1299,
+   "subtotal": 1000,
+   "tax": 437,
+   "total": 2736
+  },
+  "name": "freeship_ignored_for_express",
+  "order": {
+   "coupon": "FREESHIP",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ],
+   "shipping": "express"
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "coupon:FREESHIP"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 1000,
+     "net": 1000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 200,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 1000,
+   "tax": 200,
+   "total": 1200
+  },
+  "name": "freeship_waives_international_surcharge",
+  "order": {
+   "country": "FR",
+   "coupon": "FREESHIP",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 1000,
+     "net": 1000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 190,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 499,
+   "subtotal": 1000,
+   "tax": 285,
+   "total": 1784
+  },
+  "name": "unknown_coupon_ignored",
+  "order": {
+   "coupon": "BOGUS",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 5000,
+     "net": 5000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 950,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 5000,
+   "tax": 950,
+   "total": 5950
+  },
+  "name": "free_standard_shipping_at_5000",
+  "order": {
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 5000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 4999,
+     "net": 4999,
+     "qty": 1,
+     "sku": "A",
+     "tax": 950,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 499,
+   "subtotal": 4999,
+   "tax": 1045,
+   "total": 6543
+  },
+  "name": "standard_shipping_below_5000",
+  "order": {
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 4999
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "volume"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 60
+   },
+   "lines": [
+    {
+     "gross": 1200,
+     "net": 1140,
+     "qty": 12,
+     "sku": "A",
+     "tax": 217,
+     "volume_discount": 60
+    }
+   ],
+   "shipping": 1499,
+   "subtotal": 1140,
+   "tax": 502,
+   "total": 3141
+  },
+  "name": "express_many_items",
+  "order": {
+   "lines": [
+    {
+     "qty": 12,
+     "sku": "A",
+     "unit_price_cents": 100
+    }
+   ],
+   "shipping": "express"
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 1000,
+     "net": 1000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 210,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 2099,
+   "subtotal": 1000,
+   "tax": 651,
+   "total": 3750
+  },
+  "name": "express_international",
+  "order": {
+   "country": "NL",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ],
+   "shipping": "express"
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 1000,
+     "net": 1000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 200,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 1000,
+   "tax": 200,
+   "total": 1200
+  },
+  "name": "pickup_international",
+  "order": {
+   "country": "GB",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ],
+   "shipping": "pickup"
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 1000,
+     "net": 1000,
+     "qty": 1,
+     "sku": "A",
+     "tax": 0,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 1299,
+   "subtotal": 1000,
+   "tax": 0,
+   "total": 2299
+  },
+  "name": "us_no_tax_but_shipping",
+  "order": {
+   "country": "US",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "reverse_charge"
+   ],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 2000,
+     "net": 2000,
+     "qty": 2,
+     "sku": "A",
+     "tax": 0,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 1299,
+   "subtotal": 2000,
+   "tax": 0,
+   "total": 3299
+  },
+  "name": "reverse_charge_business_eu",
+  "order": {
+   "country": "FR",
+   "customer": {
+    "is_business": true,
+    "vat_id": "FR123"
+   },
+   "lines": [
+    {
+     "qty": 2,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 2000,
+     "net": 2000,
+     "qty": 2,
+     "sku": "A",
+     "tax": 380,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 499,
+   "subtotal": 2000,
+   "tax": 475,
+   "total": 2974
+  },
+  "name": "no_reverse_charge_in_origin_country",
+  "order": {
+   "customer": {
+    "is_business": true,
+    "vat_id": "DE1"
+   },
+   "lines": [
+    {
+     "qty": 2,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 2000,
+     "net": 2000,
+     "qty": 2,
+     "sku": "A",
+     "tax": 400,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 1299,
+   "subtotal": 2000,
+   "tax": 660,
+   "total": 3959
+  },
+  "name": "no_reverse_charge_outside_eu",
+  "order": {
+   "country": "GB",
+   "customer": {
+    "is_business": true,
+    "vat_id": "GB1"
+   },
+   "lines": [
+    {
+     "qty": 2,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [],
+   "discounts": {
+    "coupon": 0,
+    "tier": 0,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 2000,
+     "net": 2000,
+     "qty": 2,
+     "sku": "A",
+     "tax": 400,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 1299,
+   "subtotal": 2000,
+   "tax": 660,
+   "total": 3959
+  },
+  "name": "business_without_vat_id_pays_tax",
+  "order": {
+   "country": "FR",
+   "customer": {
+    "is_business": true
+   },
+   "lines": [
+    {
+     "qty": 2,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "applied": [
+    "tier:gold",
+    "coupon:SAVE10"
+   ],
+   "discounts": {
+    "coupon": 506,
+    "tier": 266,
+    "volume": 0
+   },
+   "lines": [
+    {
+     "gross": 2331,
+     "net": 2331,
+     "qty": 3,
+     "sku": "A",
+     "tax": 379,
+     "volume_discount": 0
+    },
+    {
+     "gross": 2999,
+     "net": 2999,
+     "qty": 1,
+     "sku": "B",
+     "tax": 180,
+     "volume_discount": 0
+    },
+    {
+     "gross": 2500,
+     "net": 2500,
+     "qty": 1,
+     "sku": "G",
+     "tax": 0,
+     "volume_discount": 0
+    }
+   ],
+   "shipping": 0,
+   "subtotal": 7830,
+   "tax": 559,
+   "total": 7617
+  },
+  "name": "mixed_lines_discount_allocation",
+  "order": {
+   "coupon": "SAVE10",
+   "customer": {
+    "tier": "gold"
+   },
+   "lines": [
+    {
+     "qty": 3,
+     "sku": "A",
+     "unit_price_cents": 777
+    },
+    {
+     "category": "books",
+     "qty": 1,
+     "sku": "B",
+     "unit_price_cents": 2999
+    },
+    {
+     "category": "gift_card",
+     "qty": 1,
+     "sku": "G",
+     "unit_price_cents": 2500
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "error": "unsupported country: CH"
+  },
+  "name": "error_unsupported_country",
+  "order": {
+   "country": "CH",
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ },
+ {
+  "expected": {
+   "error": "unknown shipping method: drone"
+  },
+  "name": "error_unknown_shipping",
+  "order": {
+   "lines": [
+    {
+     "qty": 1,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ],
+   "shipping": "drone"
+  }
+ },
+ {
+  "expected": {
+   "error": "order has no lines"
+  },
+  "name": "error_no_lines",
+  "order": {
+   "lines": []
+  }
+ },
+ {
+  "expected": {
+   "error": "qty must be positive"
+  },
+  "name": "error_zero_qty",
+  "order": {
+   "lines": [
+    {
+     "qty": 0,
+     "sku": "A",
+     "unit_price_cents": 1000
+    }
+   ]
+  }
+ }
+]

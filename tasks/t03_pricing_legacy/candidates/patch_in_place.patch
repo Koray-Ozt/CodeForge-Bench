@@ -1,0 +1,25 @@
+diff --git a/shop/pricing.py b/shop/pricing.py
+index dea70f3..76d5358 100644
+--- a/shop/pricing.py
++++ b/shop/pricing.py
+@@ -5,7 +5,7 @@ integer cents. Orders are plain dicts because the checkout service and the porta
+ hand them over as parsed JSON.
+ """
+ 
+-TAX = {"DE": 19, "AT": 20, "FR": 20, "GB": 20, "NL": 21, "US": 0}
++TAX = {"DE": 19, "AT": 20, "FR": 20, "GB": 20, "NL": 21, "US": 0, "NO": 25}
+ EU = ("DE", "AT", "FR", "NL")
+ ORIGIN = "DE"
+ 
+@@ -69,6 +69,11 @@ def price_order(order):
+                 coupon_disc = min(round((discountable - tier_disc) * 10 / 100), 5000)
+                 if coupon_disc:
+                     applied.append("coupon:SAVE10")
++        elif code == "SAVE15":
++            if tier != "platinum":
++                coupon_disc = min(round((discountable - tier_disc) * 15 / 100), 7500)
++                if coupon_disc:
++                    applied.append("coupon:SAVE15")
+         elif code == "FIXED5":
+             if subtotal >= 2000:
+                 coupon_disc = 500

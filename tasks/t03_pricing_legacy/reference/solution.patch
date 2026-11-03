@@ -1,0 +1,429 @@
+diff --git a/shop/discounts.py b/shop/discounts.py
+new file mode 100644
+index 0000000..23bd041
+--- /dev/null
++++ b/shop/discounts.py
+@@ -0,0 +1,79 @@
++"""Volume, tier and coupon discounts."""
++
++from __future__ import annotations
++
++from collections.abc import Callable
++from dataclasses import dataclass
++
++from .rates import GIFT_CARD, TIER_PERCENT, VOLUME_TIERS
++
++
++def _percent_of(amount: int, percent: int) -> int:
++    # round() is banker's rounding on a float; finance depends on the exact results.
++    return round(amount * percent / 100)
++
++
++def volume_discount(qty: int, gross: int, category: str | None) -> int:
++    if category == GIFT_CARD:
++        return 0
++    for minimum, percent in VOLUME_TIERS:
++        if qty >= minimum:
++            return _percent_of(gross, percent)
++    return 0
++
++
++def tier_discount(tier: str, discountable: int) -> int:
++    percent = TIER_PERCENT.get(tier)
++    return _percent_of(discountable, percent) if percent else 0
++
++
++@dataclass(frozen=True)
++class CouponContext:
++    tier: str
++    subtotal: int
++    discountable: int
++    tier_discount: int
++
++
++@dataclass(frozen=True)
++class CouponResult:
++    amount: int = 0
++    free_shipping: bool = False
++    label: str | None = None
++
++
++NO_COUPON = CouponResult()
++
++
++def _percent_coupon(code: str, percent: int, cap: int) -> Callable[[CouponContext], CouponResult]:
++    def apply(ctx: CouponContext) -> CouponResult:
++        if ctx.tier == "platinum":  # platinum members never stack percentage coupons
++            return NO_COUPON
++        base = ctx.discountable - ctx.tier_discount
++        amount = min(_percent_of(base, percent), cap)
++        return CouponResult(amount, label=f"coupon:{code}" if amount else None)
++
++    return apply
++
++
++def _fixed5(ctx: CouponContext) -> CouponResult:
++    if ctx.subtotal >= 2000:
++        return CouponResult(500, label="coupon:FIXED5")
++    return NO_COUPON
++
++
++def _free_shipping(ctx: CouponContext) -> CouponResult:
++    return CouponResult(free_shipping=True, label="coupon:FREESHIP")
++
++
++COUPONS: dict[str, Callable[[CouponContext], CouponResult]] = {
++    "SAVE10": _percent_coupon("SAVE10", 10, 5000),
++    "SAVE15": _percent_coupon("SAVE15", 15, 7500),
++    "FIXED5": _fixed5,
++    "FREESHIP": _free_shipping,
++}
++
++
++def apply_coupon(code: str | None, ctx: CouponContext) -> CouponResult:
++    handler = COUPONS.get(code.upper()) if code else None
++    return handler(ctx) if handler else NO_COUPON
+diff --git a/shop/pricing.py b/shop/pricing.py
+index dea70f3..77c8aa7 100644
+--- a/shop/pricing.py
++++ b/shop/pricing.py
+@@ -1,135 +1,111 @@
+ """Order pricing for the web shop and the B2B portal.
+ 
+-Grown over six years; most branches exist because of a support ticket. Amounts are
+-integer cents. Orders are plain dicts because the checkout service and the portal both
+-hand them over as parsed JSON.
++Orders are plain dicts because the checkout service and the portal both hand them over as
++parsed JSON. Amounts are integer cents. The rules live in `discounts`, `tax`, `shipping`
++and the constants in `rates`; this module only wires them together.
+ """
+ 
+-TAX = {"DE": 19, "AT": 20, "FR": 20, "GB": 20, "NL": 21, "US": 0}
+-EU = ("DE", "AT", "FR", "NL")
+-ORIGIN = "DE"
++from __future__ import annotations
+ 
++from dataclasses import dataclass, field
++from typing import Any
+ 
+-def price_order(order):
+-    customer = order.get("customer") or {}
+-    tier = customer.get("tier", "standard")
++from .discounts import CouponContext, apply_coupon, tier_discount, volume_discount
++from .rates import GIFT_CARD, SHIPPING_METHODS, TAX
++from .shipping import shipping_cost
++from .tax import apply_line_tax, is_reverse_charge, shipping_tax
++
++
++@dataclass
++class _PricedLine:
++    sku: str
++    qty: int
++    gross: int
++    volume_discount: int
++    net: int
++    category: str
++    tax: int = 0
++
++    def as_dict(self) -> dict[str, Any]:
++        return {
++            "sku": self.sku, "qty": self.qty, "gross": self.gross,
++            "volume_discount": self.volume_discount, "net": self.net, "tax": self.tax,
++        }  # fmt: skip
++
++
++@dataclass
++class _Lines:
++    priced: list[_PricedLine] = field(default_factory=list)
++    subtotal: int = 0
++    discountable: int = 0
++    volume_total: int = 0
++    items: int = 0
++
++
++def _validate(order: dict[str, Any]) -> tuple[str, str]:
+     country = order.get("country", "DE")
+     if country not in TAX:
+         raise ValueError("unsupported country: " + str(country))
+-    coupon = order.get("coupon")
+     method = order.get("shipping", "standard")
+-    if method not in ("standard", "express", "pickup"):
++    if method not in SHIPPING_METHODS:
+         raise ValueError("unknown shipping method: " + str(method))
+     if not order.get("lines"):
+         raise ValueError("order has no lines")
++    return country, method
+ 
+-    applied = []
+-    lines_out = []
+-    subtotal = 0
+-    discountable = 0
+-    volume_total = 0
+-    items = 0
+-    for line in order["lines"]:
+-        qty = line["qty"]
++
++def _price_lines(raw_lines: list[dict[str, Any]]) -> _Lines:
++    result = _Lines()
++    for raw in raw_lines:
++        qty = raw["qty"]
+         if qty <= 0:
+             raise ValueError("qty must be positive")
+-        gross = qty * line["unit_price_cents"]
+-        items += qty
+-        vd = 0
+-        if line.get("category") != "gift_card":
+-            if qty >= 50:
+-                vd = round(gross * 10 / 100)
+-            elif qty >= 10:
+-                vd = round(gross * 5 / 100)
+-        net = gross - vd
+-        volume_total += vd
+-        subtotal += net
+-        if line.get("category") != "gift_card":
+-            discountable += net
+-        lines_out.append({"sku": line["sku"], "qty": qty, "gross": gross,
+-                          "volume_discount": vd, "net": net, "tax": 0,
+-                          "category": line.get("category", "general")})
+-    if volume_total:
+-        applied.append("volume")
+-
+-    tier_disc = 0
+-    if tier == "gold":
+-        tier_disc = round(discountable * 5 / 100)
+-    elif tier == "platinum":
+-        tier_disc = round(discountable * 8 / 100)
+-    if tier_disc:
+-        applied.append("tier:" + tier)
+-
+-    coupon_disc = 0
+-    free_ship = False
+-    if coupon:
+-        code = coupon.upper()
+-        if code == "SAVE10":
+-            if tier != "platinum":
+-                coupon_disc = min(round((discountable - tier_disc) * 10 / 100), 5000)
+-                if coupon_disc:
+-                    applied.append("coupon:SAVE10")
+-        elif code == "FIXED5":
+-            if subtotal >= 2000:
+-                coupon_disc = 500
+-                applied.append("coupon:FIXED5")
+-        elif code == "FREESHIP":
+-            free_ship = True
+-            applied.append("coupon:FREESHIP")
+-
+-    discount_total = tier_disc + coupon_disc
+-    after_discount = subtotal - discount_total
+-
+-    reverse_charge = False
+-    if customer.get("is_business") and customer.get("vat_id"):
+-        if country != ORIGIN and country in EU:
+-            reverse_charge = True
+-            applied.append("reverse_charge")
+-
+-    tax_total = 0
+-    for out in lines_out:
+-        if out["category"] == "gift_card":
+-            continue
+-        base = out["net"]
+-        if discountable:
+-            base = out["net"] - round(out["net"] * discount_total / discountable)
+-        if reverse_charge:
+-            rate = 0
+-        elif out["category"] == "books" and country == "DE":
+-            rate = 7
+-        else:
+-            rate = TAX[country]
+-        out["tax"] = round(base * rate / 100)
+-        tax_total += out["tax"]
+-
+-    shipping = 0
+-    if method == "express":
+-        shipping = 1299 + 100 * ((items - 1) // 5)
+-        if country not in ("DE", "AT"):
+-            shipping += 800
+-    elif method == "standard":
+-        if not free_ship:
+-            if after_discount < 5000:
+-                shipping = 499
+-            if country not in ("DE", "AT"):
+-                shipping += 800
+-    ship_tax = 0
+-    if shipping and not reverse_charge:
+-        ship_tax = round(shipping * TAX[country] / 100)
+-    tax_total += ship_tax
+-
+-    total = after_discount + shipping + tax_total
+-    if total < 0:
+-        total = 0
+-
+-    for out in lines_out:
+-        del out["category"]
++        category = raw.get("category", "general")
++        gross = qty * raw["unit_price_cents"]
++        discount = volume_discount(qty, gross, raw.get("category"))
++        line = _PricedLine(raw["sku"], qty, gross, discount, gross - discount, category)
++        result.priced.append(line)
++        result.items += qty
++        result.volume_total += discount
++        result.subtotal += line.net
++        if category != GIFT_CARD:
++            result.discountable += line.net
++    return result
++
++
++def price_order(order: dict[str, Any]) -> dict[str, Any]:
++    customer = order.get("customer") or {}
++    country, method = _validate(order)
++    tier = customer.get("tier", "standard")
++    lines = _price_lines(order["lines"])
++
++    tier_disc = tier_discount(tier, lines.discountable)
++    context = CouponContext(tier, lines.subtotal, lines.discountable, tier_disc)
++    coupon = apply_coupon(order.get("coupon"), context)
++    discount_total = tier_disc + coupon.amount
++    after_discount = lines.subtotal - discount_total
++
++    reverse = is_reverse_charge(customer, country)
++    tax_total = apply_line_tax(lines.priced, discount_total, lines.discountable, country, reverse)
++    shipping = shipping_cost(method, country, lines.items, after_discount, coupon.free_shipping)
++    tax_total += shipping_tax(shipping, country, reverse)
++
++    applied = [
++        label
++        for label in (
++            "volume" if lines.volume_total else None,
++            f"tier:{tier}" if tier_disc else None,
++            coupon.label,
++            "reverse_charge" if reverse else None,
++        )
++        if label
++    ]
+     return {
+-        "lines": lines_out,
+-        "subtotal": subtotal,
+-        "discounts": {"volume": volume_total, "tier": tier_disc, "coupon": coupon_disc},
++        "lines": [line.as_dict() for line in lines.priced],
++        "subtotal": lines.subtotal,
++        "discounts": {"volume": lines.volume_total, "tier": tier_disc, "coupon": coupon.amount},
+         "shipping": shipping,
+         "tax": tax_total,
+-        "total": total,
++        "total": max(after_discount + shipping + tax_total, 0),
+         "applied": applied,
+     }
+diff --git a/shop/rates.py b/shop/rates.py
+new file mode 100644
+index 0000000..687d0e1
+--- /dev/null
++++ b/shop/rates.py
+@@ -0,0 +1,25 @@
++"""Pricing constants. Business rule changes that are only numbers belong here.
++
++Amounts are integer cents; percentages are whole numbers.
++"""
++
++TAX = {"DE": 19, "AT": 20, "FR": 20, "GB": 20, "NL": 21, "US": 0, "NO": 25}
++EU = ("DE", "AT", "FR", "NL")
++ORIGIN = "DE"
++DOMESTIC = ("DE", "AT")  # no international shipping surcharge
++
++# (category, country) -> reduced VAT rate
++REDUCED_TAX = {("books", "DE"): 7}
++
++GIFT_CARD = "gift_card"  # never discounted, never taxed
++
++# Highest threshold first: (minimum quantity, percent off the line).
++VOLUME_TIERS = ((50, 10), (10, 5))
++TIER_PERCENT = {"gold": 5, "platinum": 8}
++
++SHIPPING_METHODS = ("standard", "express", "pickup")
++STANDARD_SHIPPING = 499
++FREE_SHIPPING_FROM = 5000
++EXPRESS_SHIPPING = 1299
++EXPRESS_EXTRA_PER_FIVE_ITEMS = 100
++INTERNATIONAL_SURCHARGE = 800
+diff --git a/shop/shipping.py b/shop/shipping.py
+new file mode 100644
+index 0000000..bdb7b09
+--- /dev/null
++++ b/shop/shipping.py
+@@ -0,0 +1,26 @@
++"""Shipping charges."""
++
++from .rates import (
++    DOMESTIC,
++    EXPRESS_EXTRA_PER_FIVE_ITEMS,
++    EXPRESS_SHIPPING,
++    FREE_SHIPPING_FROM,
++    INTERNATIONAL_SURCHARGE,
++    STANDARD_SHIPPING,
++)
++
++
++def _surcharge(country: str) -> int:
++    return 0 if country in DOMESTIC else INTERNATIONAL_SURCHARGE
++
++
++def shipping_cost(
++    method: str, country: str, items: int, after_discount: int, free_shipping: bool
++) -> int:
++    if method == "express":  # the FREESHIP coupon does not apply to express
++        extra = EXPRESS_EXTRA_PER_FIVE_ITEMS * ((items - 1) // 5)
++        return EXPRESS_SHIPPING + extra + _surcharge(country)
++    if method == "standard" and not free_shipping:
++        base = STANDARD_SHIPPING if after_discount < FREE_SHIPPING_FROM else 0
++        return base + _surcharge(country)
++    return 0
+diff --git a/shop/tax.py b/shop/tax.py
+new file mode 100644
+index 0000000..8f2b757
+--- /dev/null
++++ b/shop/tax.py
+@@ -0,0 +1,45 @@
++"""VAT rules."""
++
++from __future__ import annotations
++
++from collections.abc import Iterable, Mapping
++from typing import Any
++
++from .rates import EU, GIFT_CARD, ORIGIN, REDUCED_TAX, TAX
++
++
++def is_reverse_charge(customer: Mapping[str, Any], country: str) -> bool:
++    """B2B sales with a VAT id to another EU country are taxed by the buyer."""
++    business = bool(customer.get("is_business") and customer.get("vat_id"))
++    return business and country != ORIGIN and country in EU
++
++
++def tax_rate(category: str, country: str, reverse_charge: bool) -> int:
++    if reverse_charge:
++        return 0
++    return REDUCED_TAX.get((category, country), TAX[country])
++
++
++def apply_line_tax(
++    lines: Iterable[Any], discount_total: int, discountable: int, country: str, reverse: bool
++) -> int:
++    """Set `tax` on each taxable line and return their sum.
++
++    Order-level discounts are spread over lines pro rata, rounding each share on its own
++    (so the shares may not add up exactly; this matches historic invoices).
++    """
++    total = 0
++    for line in lines:
++        if line.category == GIFT_CARD:
++            continue
++        share = round(line.net * discount_total / discountable) if discountable else 0
++        rate = tax_rate(line.category, country, reverse)
++        line.tax = round((line.net - share) * rate / 100)
++        total += line.tax
++    return total
++
++
++def shipping_tax(shipping: int, country: str, reverse_charge: bool) -> int:
++    if not shipping or reverse_charge:
++        return 0
++    return round(shipping * TAX[country] / 100)

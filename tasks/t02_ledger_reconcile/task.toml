@@ -1,0 +1,24 @@
+id = "t02_ledger_reconcile"
+title = "Month-end ledger reconciliation is quadratic"
+category = "performance"
+
+[limits]
+timeout_s = 300
+memory = "256m"
+cpus = "1"
+pids = 64
+
+[bench]
+script = "bench_reconcile.py"
+repeats = 5
+warmup = 1
+
+[[candidates]]
+patch = "candidates/set_for_matched_ids.patch"
+expect = "failed_tests"
+note = "Swaps the matched-id list for a set: removes one hot spot but still scans every entry per transaction."
+
+[[candidates]]
+patch = "candidates/drops_reference_rule.patch"
+expect = "failed_tests"
+note = "Fast bucketed lookup that silently drops the reference-match preference rule."

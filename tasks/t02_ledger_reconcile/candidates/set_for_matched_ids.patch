@@ -1,0 +1,22 @@
+diff --git a/ledger/reconcile.py b/ledger/reconcile.py
+index 81d059d..0365e6d 100644
+--- a/ledger/reconcile.py
++++ b/ledger/reconcile.py
+@@ -30,7 +30,7 @@ def reconcile(
+ 
+     matches: list[Match] = []
+     unmatched_transactions: list[Transaction] = []
+-    matched_entry_ids: list[str] = []
++    matched_entry_ids: set[str] = set()
+ 
+     for txn in transactions:
+         candidates = []
+@@ -51,7 +51,7 @@ def reconcile(
+ 
+         candidates.sort(key=lambda c: (c[0], c[1], c[2]))
+         _, diff, _, entry, hit = candidates[0]
+-        matched_entry_ids.append(entry.id)
++        matched_entry_ids.add(entry.id)
+         matches.append(Match(txn.id, entry.id, diff, hit))
+ 
+     unmatched_entries = [e for e in entries if e.id not in matched_entry_ids]
