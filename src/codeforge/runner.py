@@ -105,6 +105,12 @@ def _classify(
             result.detail = "no tests were collected"
         elif bad:
             result.status = "failed_tests"
+            if run.exit_code == 0:
+                result.detail = "junit.xml reports failures but pytest exited 0"
+        elif run.exit_code != 0:
+            # A clean junit.xml is not enough: pytest crashed, was killed, or the report
+            # is stale or forged. Never report "passed" without a zero exit code.
+            result.detail = f"pytest exited {run.exit_code} although junit.xml shows no failures"
         else:
             result.status = "passed"
     return result

@@ -12,6 +12,25 @@ performance work, refactoring, code review, test design, and judging whether a p
 - Python 3.12+, pytest, ruff, Docker, GitHub Actions. No paid APIs, no frontend, no frameworks.
 - Every result in this repository was produced by running the code; nothing is estimated.
 
+## At a glance: a sample evaluation
+
+The same runner scores any patch. Below, five patches for the code-review task
+`t04_webhook_pr`, as produced by `codeforge verify` (copied from `results/verify.md`).
+The last two are hand-written plausible-but-wrong fixes; no model was run.
+
+| Patch | Status | Tests passed | Defects resolved |
+|---|---|---|---|
+| none (the defective PR as merged) | failed_tests | 16 / 29 | 0 / 9 |
+| reference solution | **passed** | 29 / 29 | 9 / 9 |
+| `naive_quick_fixes` (`compare_digest` on `str`, loop bound) | failed_tests | 16 / 29 | 2 / 9 |
+| `fix_keeps_broad_except` (still catches `Exception`) | failed_tests | 28 / 29 | 8 / 9 |
+
+The 8/9 patch fails one hidden test and would pass most reviews at a glance. That gap is
+what this benchmark measures. Across all five tasks, 21 of 21 checks hold: every baseline
+fails, every reference passes, and every wrong candidate is caught. Full tables:
+[`results/verify.md`](results/verify.md). Everything runs in a network-less, memory- and
+CPU-limited Docker container.
+
 ## Contents
 
 1. [Quick start](#quick-start)

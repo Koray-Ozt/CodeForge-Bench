@@ -1,29 +1,29 @@
 # CodeForge Bench report
 
-Generated 2026-11-03T02:00:25+00:00 on `Windows-11-10.0.26200-SP0` (codeforge 0.1.0).
+Generated 2026-11-03T02:12:49+00:00 on `Windows-11-10.0.26200-SP0` (codeforge 0.1.0).
 
 | Task | Run | Status | Passed | Failed | Error | Score | Time (s) |
 |---|---|---|---|---|---|---|---|
-| t01_inventory_race | baseline | **failed_tests** | 11 | 6 | 0 | 0.65 | 1.2 |
-| t01_inventory_race | reference | **passed** | 17 | 0 | 0 | 1.00 | 1.9 |
-| t01_inventory_race | candidate:candidates/global_lock.patch | **failed_tests** | 16 | 1 | 0 | 0.94 | 4.5 |
-| t01_inventory_race | candidate:candidates/lock_reserve_only.patch | **failed_tests** | 12 | 5 | 0 | 0.71 | 3.3 |
-| t02_ledger_reconcile | baseline | **failed_tests** | 464 | 2 | 0 | 1.00 | 12.0 |
-| t02_ledger_reconcile | reference | **passed** | 466 | 0 | 0 | 1.00 | 1.5 |
+| t01_inventory_race | baseline | **failed_tests** | 11 | 6 | 0 | 0.65 | 0.7 |
+| t01_inventory_race | reference | **passed** | 17 | 0 | 0 | 1.00 | 1.6 |
+| t01_inventory_race | candidate:candidates/global_lock.patch | **failed_tests** | 16 | 1 | 0 | 0.94 | 4.2 |
+| t01_inventory_race | candidate:candidates/lock_reserve_only.patch | **failed_tests** | 12 | 5 | 0 | 0.71 | 3.2 |
+| t02_ledger_reconcile | baseline | **failed_tests** | 464 | 2 | 0 | 1.00 | 11.8 |
+| t02_ledger_reconcile | reference | **passed** | 466 | 0 | 0 | 1.00 | 1.7 |
 | t02_ledger_reconcile | candidate:candidates/set_for_matched_ids.patch | **failed_tests** | 464 | 2 | 0 | 1.00 | 11.7 |
-| t02_ledger_reconcile | candidate:candidates/drops_reference_rule.patch | **failed_tests** | 160 | 306 | 0 | 0.34 | 2.4 |
-| t03_pricing_legacy | baseline | **failed_tests** | 646 | 10 | 0 | 0.98 | 1.3 |
-| t03_pricing_legacy | reference | **passed** | 656 | 0 | 0 | 1.00 | 1.3 |
-| t03_pricing_legacy | candidate:candidates/patch_in_place.patch | **failed_tests** | 655 | 1 | 0 | 1.00 | 1.2 |
-| t03_pricing_legacy | candidate:candidates/refactor_changes_rounding.patch | **failed_tests** | 616 | 40 | 0 | 0.94 | 1.4 |
-| t04_webhook_pr | baseline | **failed_tests** | 16 | 13 | 0 | 0.55 | 0.7 |
-| t04_webhook_pr | reference | **passed** | 29 | 0 | 0 | 1.00 | 0.6 |
-| t04_webhook_pr | candidate:candidates/naive_quick_fixes.patch | **failed_tests** | 16 | 13 | 0 | 0.55 | 0.7 |
-| t04_webhook_pr | candidate:candidates/fix_keeps_broad_except.patch | **failed_tests** | 28 | 1 | 0 | 0.97 | 0.7 |
-| t05_orders_api | baseline | **failed_tests** | 18 | 42 | 0 | 0.30 | 1.2 |
-| t05_orders_api | reference | **passed** | 60 | 0 | 0 | 1.00 | 1.3 |
-| t05_orders_api | candidate:candidates/offset_cursor_and_check_then_insert.patch | **failed_tests** | 57 | 3 | 0 | 0.95 | 1.3 |
-| t05_orders_api | candidate:candidates/no_in_place_migration.patch | **failed_tests** | 59 | 1 | 0 | 0.98 | 1.2 |
+| t02_ledger_reconcile | candidate:candidates/drops_reference_rule.patch | **failed_tests** | 160 | 306 | 0 | 0.34 | 3.1 |
+| t03_pricing_legacy | baseline | **failed_tests** | 646 | 10 | 0 | 0.98 | 1.9 |
+| t03_pricing_legacy | reference | **passed** | 656 | 0 | 0 | 1.00 | 1.7 |
+| t03_pricing_legacy | candidate:candidates/patch_in_place.patch | **failed_tests** | 655 | 1 | 0 | 1.00 | 1.4 |
+| t03_pricing_legacy | candidate:candidates/refactor_changes_rounding.patch | **failed_tests** | 616 | 40 | 0 | 0.94 | 1.5 |
+| t04_webhook_pr | baseline | **failed_tests** | 16 | 13 | 0 | 0.55 | 0.8 |
+| t04_webhook_pr | reference | **passed** | 29 | 0 | 0 | 1.00 | 0.7 |
+| t04_webhook_pr | candidate:candidates/naive_quick_fixes.patch | **failed_tests** | 16 | 13 | 0 | 0.55 | 0.8 |
+| t04_webhook_pr | candidate:candidates/fix_keeps_broad_except.patch | **failed_tests** | 28 | 1 | 0 | 0.97 | 1.1 |
+| t05_orders_api | baseline | **failed_tests** | 18 | 42 | 0 | 0.30 | 2.0 |
+| t05_orders_api | reference | **passed** | 60 | 0 | 0 | 1.00 | 2.1 |
+| t05_orders_api | candidate:candidates/offset_cursor_and_check_then_insert.patch | **failed_tests** | 57 | 3 | 0 | 0.95 | 1.4 |
+| t05_orders_api | candidate:candidates/no_in_place_migration.patch | **failed_tests** | 59 | 1 | 0 | 0.98 | 1.4 |
 
 ## t01_inventory_race / baseline
 
@@ -32,12 +32,12 @@ Generated 2026-11-03T02:00:25+00:00 on `Windows-11-10.0.26200-SP0` (codeforge 0.
 
 Failing tests:
 
-- `hidden.test_concurrency_edges::test_double_release_credits_units_once` (failed): AssertionError: [KeyError('4739f270973346b0a9663e4fe4677d82'), True]
+- `hidden.test_concurrency_edges::test_double_release_credits_units_once` (failed): AssertionError: [KeyError('e48530335fc042a5bb6cf2476d185822'), True]
 - `hidden.test_concurrency_edges::test_release_and_reserve_do_not_lose_updates` (failed): AssertionError: assert 10 == 8
-- `hidden.test_concurrency_edges::test_confirm_racing_with_release_or_sweep_is_exclusive[release]` (failed): KeyError: '4a578443ca194cf09ca9da738814ccb4'
-- `hidden.test_concurrency_edges::test_confirm_racing_with_release_or_sweep_is_exclusive[sweep]` (failed): KeyError: 'f27d022a5c83404c803a5c89e2b21f59'
+- `hidden.test_concurrency_edges::test_confirm_racing_with_release_or_sweep_is_exclusive[release]` (failed): KeyError: '50109e1a35f64efaab686be67cbf69c1'
+- `hidden.test_concurrency_edges::test_confirm_racing_with_release_or_sweep_is_exclusive[sweep]` (failed): KeyError: 'f09a486ef43548a5b0c914e36bba3bec'
 - `hidden.test_concurrency_edges::test_stress_invariants_hold` (failed): AssertionError: A
-- `visible.test_service::test_concurrent_reserves_do_not_oversell` (failed): AssertionError: [Reservation(id='a79381eb6160498f80ef184efcef6b4b', sku='LAST', quantity=1, holder='alice', expires_at=1060.0), Reservation(id='e106c741950b48ee9b531db9d5f31d77', sku='LAST', quantity=1, holder='bob', expires_at=1060.0)]
+- `visible.test_service::test_concurrent_reserves_do_not_oversell` (failed): AssertionError: [Reservation(id='199fa7596b5640b592118e14a8bcccd2', sku='LAST', quantity=1, holder='alice', expires_at=1060.0), Reservation(id='3e27372bee30496093a77588fd05f683', sku='LAST', quantity=1, holder='bob', expires_at=1060.0)]
 
 ## t01_inventory_race / reference
 
@@ -63,11 +63,11 @@ Failing tests:
 
 Failing tests:
 
-- `hidden.test_concurrency_edges::test_double_release_credits_units_once` (failed): AssertionError: [KeyError('d4a07153891447c097e57b3a3e6c1042'), True]
+- `hidden.test_concurrency_edges::test_double_release_credits_units_once` (failed): AssertionError: [KeyError('ace1107f4f92422897de5dbc11b91b75'), True]
 - `hidden.test_concurrency_edges::test_release_and_reserve_do_not_lose_updates` (failed): AssertionError: assert 10 == 8
 - `hidden.test_concurrency_edges::test_different_skus_are_not_serialized` (failed): AssertionError: reservations for different SKUs never overlapped in the store
-- `hidden.test_concurrency_edges::test_confirm_racing_with_release_or_sweep_is_exclusive[release]` (failed): KeyError: '620bcd0a235346deb461977f3dc782b3'
-- `hidden.test_concurrency_edges::test_confirm_racing_with_release_or_sweep_is_exclusive[sweep]` (failed): KeyError: 'dfd51f3363184ff68e87861d7f9841bf'
+- `hidden.test_concurrency_edges::test_confirm_racing_with_release_or_sweep_is_exclusive[release]` (failed): KeyError: 'deddf395ce474cb9ac74d6e3e4d14e57'
+- `hidden.test_concurrency_edges::test_confirm_racing_with_release_or_sweep_is_exclusive[sweep]` (failed): KeyError: 'd00b439e1dca403e97e136c23c5fa89e'
 
 ## t02_ledger_reconcile / baseline
 
@@ -621,7 +621,7 @@ Failing tests:
 
 Failing tests:
 
-- `hidden.test_idempotency_edges::test_concurrent_duplicates_create_exactly_one_order` (failed): assert 5 == 1
+- `hidden.test_idempotency_edges::test_concurrent_duplicates_create_exactly_one_order` (failed): assert 10 == 1
 - `hidden.test_pagination_edges::test_status_filter_with_concurrent_status_changes_does_not_skip` (failed): assert [4, 5] == [3, 4]
 - `hidden.test_pagination_edges::test_cursors_never_leak_other_customers_orders` (failed): assert [] == [4]
 
